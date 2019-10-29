@@ -1,6 +1,6 @@
 #' @export
 
-##
+## moving window envelope calculator based on emg package
 
 envelopeR <- function(my_vector, samprate = samprate, samplingrate = 1/samprate, wsize = 1/samprate/100) {
 
