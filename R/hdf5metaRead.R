@@ -40,9 +40,18 @@ hdf5metaReadR <- function(filename) {
   idx_pairs <- embed(codedt$t_idx, 2)[, 2:1]
   idx_lists <- split(idx_pairs,
                      rep(1:nrow(idx_pairs), times = ncol(idx_pairs)))
+
   ## append final pair manually
   idx_lists <- append(idx_lists, list(c(codedt$t_idx[length(codedt$t_idx)],
-                                         end_idx)))
+                                        end_idx)))
+
+  ## analyse two minute segments
+  # idx_trips <- embed(codedt$t_idx, 3)[seq.int(1,58,2), c(3,1)]
+  # idx_trpl <- split(idx_trips,
+  #                    rep(1:nrow(idx_trips), times = ncol(idx_trips)))
+  # idx_lists <- append(idx_trpl, list(c(codedt$t_idx[length(codedt$t_idx)],
+  #                                      end_idx)))
+
 
   return(list(samprate = samprate,
               chandetails = chandetails,

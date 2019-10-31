@@ -31,7 +31,7 @@ out_dt <- segmentProcessR(idx_lists = idx,
                           chandetails = chandetails,
                           codedt = codedt)
 
-l_out_dt <- out_dt
+
 
 
 # create data.table out of data channels
@@ -92,9 +92,9 @@ moltendt[, bpfiltered := as.vector(filtfilt(bpfilt, x = DC)),
 ## group using custom envelope function
 moltendt[, enved := envelopeR(bpfiltered, samprate = samprate),
          by = "channel"]
-moltendt[, envsd := sd(enved, na.rm = TRUE),
+moltendt[, envsd := mean(abs(bpfiltered), na.rm = TRUE),
          by = c("channel")]
-moltendt[, env_group := eventGroupR(enved, 2*envsd),
+moltendt[, group_no := eventGroupR(enved, 2*envsd),
          by = "channel"]
 
 
@@ -114,7 +114,7 @@ moltendt[, env_group := eventGroupR(enved, 2*envsd),
 #          by = "channel"]
 
 ## select events that meet smooth threshold
-dt_thresh <- moltendt[envma > 2*stdev]
+dt_thresh <- moltendt[enved > 2*envsd]
 
 ## calculate length of each event but taking the length of time above threshold
 event_length <- dt_thresh[, .(n_dp = length(t)),
@@ -170,62 +170,29 @@ sum_dt <- rol_molten[, .(mean = mean(value, na.rm = TRUE),
 sum_dt <- unique(sum_dt)
 
 
-orig_rec <- moltendt
-chan <- "chan01"
-grp_no <- 63
+  orig_rec <- moltendt
+  chan <- "chan01"
+  grp_no <- 21
 
-event_start <- min(orig_rec[channel == chan][group_no == grp_no, t]) - 0.1
-event_end <- max(orig_rec[channel == chan][group_no == grp_no, t]) + 0.1
-
-
-# ggplot(data = orig_rec[t %between% c(event_start, event_end)], aes(x = t)) +
-#   geom_rect(inherit.aes = FALSE, aes(xmin = min(orig_rec[channel == chan][group_no == grp_no, t]),
-#                                      xmax = max(orig_rec[channel == chan][group_no == grp_no, t]),
-#                                      ymin = -Inf, ymax = Inf, fill = "group"), fill = "#ffeda0") +
-#   #geom_line(aes(y = scales::rescale(DC, to = c(-1,1)), colour = "DC removed"), size = 0.2) +
-#   geom_line(aes(y = scales::rescale(bpfiltered, to = c(-1,1)), colour = "bp_filtered"), size = 0.5) +
-#   #geom_line(aes(y = envscaled, colour = "envelope scaled"), size = 0.5) +
-#   geom_line(aes(y = scales::rescale(envma, to = c(0,1)), colour = "scaled envelope"), size = 0.5) +
-#   geom_line(aes(y = 0.15, colour = "threshold"), size = 0.2) +
-#   facet_wrap(. ~ channel) +
-#   ggtitle(paste(chan, grp_no, sep = "-"))
-
-
-ggplot(data = moltendt[t %between% c(1520, 1525)], aes(x = t)) +
-  #geom_line(aes(y = DC, colour = "DC removed"), size = 0.2) +
-  geom_line(aes(y = bpfiltered, colour = "bp_filtered"), size = 0.1) +
-  #geom_line(aes(y = envscaled, colour = "envelope scaled"), size = 0.5) +
-  #geom_line(aes(y = 2*emged, colour = "emged"), size = 0.5) +
-  #geom_line(aes(y = 1.5*emgsd, colour = "2_std_emg"), size = 0.2) +
-  geom_line(aes(y = 2*enved, colour = "enved"), size = 0.5) +
-  geom_line(aes(y = 3*envsd, colour = "4_std_env"), size = 0.5) +
-  geom_line(aes(y = 3*envelSD, colour = "filteredSD"), size = 0.5) +
-  scale_color_manual(values = c("#1b9e77", "#fdbf6f", "#7570b3", "#e41a1c")) +
-  #geom_line(aes(y = 0.15, colour = "threshold"), size = 0.2) +
-  facet_wrap(. ~ channel)
-
-## find why chan03 sd is so much higher than other channels
-
-sdR <- function(my_vector, wsize = 5000) {
-
-  #full wave rectification of data
-  rectdata <- abs(my_vector)
-
-  #perform moving average over selected window size
-  n <- length(rectdata)
-  fvalues <- numeric()
-  for (i in 1:n) {
-    w_start <- max(1, i - wsize)
-    w_end <- min(n, i + wsize)
-    fvalues[i] <- sd(rectdata[w_start:w_end])
-  }
-
-  return(fvalues)
-
-}
+  event_start <- min(orig_rec[channel == chan][group_no == grp_no, t]) - 0.1
+  event_end <- max(orig_rec[channel == chan][group_no == grp_no, t]) + 0.1
 
 
 
+  ggplot(data = orig_rec[t %between% c(event_start, event_end)], aes(x = t)) +
+    geom_rect(inherit.aes = FALSE, aes(xmin = min(orig_rec[channel == chan][group_no == grp_no, t]),
+                                       xmax = max(orig_rec[channel == chan][group_no == grp_no, t]),
+                                       ymin = -Inf, ymax = Inf, fill = "group"), fill = "#ffeda0") +
+    #geom_line(aes(y = DC, colour = "DC removed"), size = 0.2) +
+    geom_line(aes(y = bpfiltered, colour = "bp_filtered"), size = 0.5) +
+    geom_line(aes(y = enved, colour = "envelope")) +
+    geom_line(aes(y = 2*envsd, colour = "threshold")) +
+    facet_wrap(. ~ channel) +
+    ggtitle(paste(chan, grp_no, sep = "-"))
 
-
-
+  ggplot(data = orig_rec[t %between% c(1420,1420.5)], aes(x = t)) +
+    geom_line(aes(y = bpfiltered, colour = "bp_filtered"), size = 0.5) +
+    geom_line(aes(y = enved, colour = "envelope")) +
+    geom_line(aes(y = 2*envsd, colour = "threshold")) +
+    facet_wrap(. ~ channel) +
+    ggtitle(paste(chan, grp_no, sep = "-"))

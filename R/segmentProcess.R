@@ -63,7 +63,7 @@ segmentProcessR <- function(idx_lists, filename, samprate, chandetails, codedt) 
            by = "channel"]
   moltendt[, enved := envelopeR(bpfiltered, samprate = samprate),
            by = "channel"]
-  moltendt[, envsd := sd(enved, na.rm = TRUE),
+  moltendt[, envsd := mean(abs(bpfiltered), na.rm = TRUE),
            by = c("channel")]
   moltendt[, group_no := eventGroupR(enved, 2*envsd),
            by = "channel"]
