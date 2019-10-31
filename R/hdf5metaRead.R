@@ -2,7 +2,8 @@
 #' @import data.table
 #' @export
 
-## reads appropriate meta data from hdf5 files and returns sample rate (samprate), start time (stime)
+## reads appropriate meta data from hdf5 files and returns sample rate (samprate), channel details (chan details),
+## data table with appropriate marker codes (codedt) and intervals to extract and analyses data over (idx_lists)
 
 hdf5metaReadR <- function(filename) {
 
