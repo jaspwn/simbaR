@@ -10,7 +10,7 @@ library(biosignalEMG)
 bpfilt <- butter(n = 4, W = c(600/(50000/2), 1200/(50000/2)), type = "pass", plane = "z")
 
 filename <- file.choose()
-
+resfile <- file.choose()
 
 ## read in file channel information
 

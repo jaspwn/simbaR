@@ -14,7 +14,7 @@ hdf5metaReadR <- function(filename) {
   samprate <<- h5read(filename, paste0(channames$name[1], "/interval/"))[1,]
   stime <- h5read(filename, paste0(channames$name[1], "/start/"))[,1]
   len <- h5read(filename, paste0(channames$name[1], "/length/"))[,1]
-  channames[, c("date", "sTod", "eTod", "tod", "treatment", "chan") := tstrsplit(name, "_")]
+  channames[, c("date", "sTod", "eTod", "tod", "treatment", "chan") := channameSplitR(name)]
   chandetails <- channames[complete.cases(channames)]
 
   ## create data.table of marker channel
