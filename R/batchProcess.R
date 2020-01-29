@@ -18,7 +18,7 @@ batchProcessR <- function(filename) {
 
   metalist <- hdf5metaReadR(filename)
   filename <- filename
-  samprate <- metalist$samprate
+  assign("samprate", metalist$samprate, envir = .GlobalEnv)
   chandetails <- metalist$chandetails
   codedt <- metalist$codedt
   idx_lists <- metalist$idx_lists

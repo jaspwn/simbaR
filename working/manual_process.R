@@ -5,6 +5,7 @@ library(signal)
 library(windowscanr)
 library(ggplot2)
 library(biosignalEMG)
+library(cowplot)
 
 #bandpass filter design
 bpfilt <- butter(n = 4, W = c(600/(50000/2), 1200/(50000/2)), type = "pass", plane = "z")
@@ -23,7 +24,7 @@ idx_lists <- meta$idx_lists
 
 ## segment to analyse
 
-idx <- idx_lists[[24]]
+idx <- idx_lists[[38]]
 
 out_dt <- segmentProcessR(idx_lists = idx,
                           filename = filename,

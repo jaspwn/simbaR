@@ -1,9 +1,10 @@
 #' @export
 
-slidingFitR <- function(x) {
+slidingFitR <- function(x, freq = 50000) {
+  #message(ls())
   #x = dt[group_no == 456]$bpfiltered
-  raw_ts <- ts(x, start = 0, frequency = 44100)
-  t_int <- seq.int(from = 1, to = 1 + length(raw_ts)/44100, length.out = length(raw_ts))
+  raw_ts <- ts(x, start = 0, frequency = freq)
+  t_int <- seq.int(from = 1, to = 1 + length(raw_ts)/freq, length.out = length(raw_ts))
 
   ssp <- spectrum(raw_ts, log = "no", plot = FALSE)
   ini_freq <- 1/ssp$freq[ssp$spec==max(ssp$spec)]

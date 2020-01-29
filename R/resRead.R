@@ -4,8 +4,8 @@
 resReadR <- function(outlist) {
 
   data <- fread(outlist)
-  data[, filename := tools::file_path_sans_ext(basename(outlist))]
-  data[, c("date", "stime-etime", "tod", "treatment", "out") := tstrsplit(filename, "_")]
+  data[, filename := outlist]
+  data[, c("date", "stime", "tod", "treatment", "out") := resnameSplitR(tools::file_path_sans_ext(basename(outlist)))]
 
   return(data)
 }

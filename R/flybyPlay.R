@@ -4,16 +4,16 @@
 #' @import rhdf5
 #' @export
 
-flybyPlayR <- function(resfile, row, filtered = FALSE) {
+flybyPlayR <- function(resdt, row, filtered = FALSE, printPlot = TRUE) {
 
   #bandpass filter design
   bpfilt <- butter(n = 4, W = c(600/(50000/2), 1200/(50000/2)), type = "pass", plane = "z")
 
-  data <- resReadR(resfile)
+  #data <- resReadR(resfile)
 
-  flyby <- data[row]
+  flyby <- resdt[row]
 
-  filename <- paste0(gsub("_out.txt", "", resfile), ".mat")
+  filename <- paste0(gsub("_out.txt", "", flyby[, filename]), ".mat")
 
   ## read in file channel information
 
@@ -28,10 +28,14 @@ flybyPlayR <- function(resfile, row, filtered = FALSE) {
   ## find where flyby occurs
 
   #find indexes of raw data file corresponding to lettercode of flyby
-  idx <- unlist(idx_lists[which(lapply(idx_lists, function(x) grep(codedt[lettercode == flyby[,code], t_idx], x)) == 1)])
+  #idx <- unlist(idx_lists[which(lapply(idx_lists, function(x) grep(codedt[lettercode == flyby[,code], t_idx], x)) == 1)])
+  #idx <- unlist(idx_lists[which.min(abs(codedt[, time] - flyby[, min_t]))])
+  idx <- unlist(idx_lists[which.max(codedt[, time][codedt[, time]<=flyby[, min_t]])])
+
+
 
   # create data.table out of data channels
-  if(!exists("moltendt", envir = .GlobalEnv) || flyby[, code] != moltendt[1, code]) {
+  if(!exists("moltendt", envir = .GlobalEnv) || flyby[, time] != moltendt[1, time]) {
 
     chan01 <- as.vector(h5read(filename,
                                paste0(chandetails[chan == "Ch1", name], "/values/"),
@@ -87,27 +91,35 @@ flybyPlayR <- function(resfile, row, filtered = FALSE) {
 
   }
 
-  ## select data for plotting and playing
-  event_start <- flyby[, min_t] - 0.1
-  event_end <- flyby[, max_t] + 0.1
 
-  plot <- ggplot(data = moltendt[t %between% c(event_start, event_end)], aes(x = t)) +
-    geom_rect(inherit.aes = FALSE, aes(xmin = flyby[, min_t],
-                                       xmax = flyby[, max_t],
-                                       ymin = -Inf, ymax = Inf, fill = "group"), fill = "#ffeda0") +
-    geom_line(aes(y = DC, colour = "DC removed"), size = 0.2) +
-    geom_line(aes(y = bpfiltered, colour = "bp_filtered"), size = 0.5) +
-    geom_line(aes(y = enved, colour = "envelope"), size = 1) +
-    scale_color_brewer(type = "qual", palette = "Set1") +
-    facet_wrap(. ~ channel) +
-    cowplot::theme_minimal_grid() +
-    theme(legend.position = "bottom")
+  ## print plot
 
-  flytable <- gridExtra::tableGrob(flyby[,c(1,2,5,6,8,9,10,11,12,13)], theme = ttheme_minimal())
+  if (printPlot == TRUE) {
 
-  comboplot <- cowplot::plot_grid(flytable, plot, ncol = 1, rel_heights = c(1,4), axis = "l", align = "h")
+    ## select data for plotting and playing
+    event_start <- flyby[, min_t] - 0.1
+    event_end <- flyby[, max_t] + 0.1
 
-  print(comboplot)
+
+    plot <- ggplot(data = moltendt[t %between% c(event_start, event_end)], aes(x = t)) +
+      geom_rect(inherit.aes = FALSE, aes(xmin = flyby[, min_t],
+                                         xmax = flyby[, max_t],
+                                         ymin = -Inf, ymax = Inf, fill = "group"), fill = "#ffeda0") +
+      geom_line(aes(y = DC, colour = "DC removed"), size = 0.2) +
+      geom_line(aes(y = bpfiltered, colour = "bp_filtered"), size = 0.5) +
+      geom_line(aes(y = enved, colour = "envelope"), size = 1) +
+      scale_color_brewer(type = "qual", palette = "Set1") +
+      facet_wrap(. ~ channel) +
+      cowplot::theme_minimal_grid() +
+      theme(legend.position = "bottom")
+
+    flytable <- gridExtra::tableGrob(flyby[,c(1,2,5,6,8,9,10,11,12,13)], theme = gridExtra::ttheme_minimal())
+
+    comboplot <- cowplot::plot_grid(flytable, plot, ncol = 1, rel_heights = c(1,4), axis = "l", align = "h")
+
+    print(comboplot)
+
+  }
 
   play_start <- flyby[, min_t] - 1
   play_end <- flyby[, max_t] + 1
@@ -119,11 +131,11 @@ flybyPlayR <- function(resfile, row, filtered = FALSE) {
     u <- moltendt[channel == flyby[, channel]][t %between% c(play_start, play_end), value * 50]
   }
 
-  uscaled <- scales::rescale(u, to = c(-7500000,7500000))
+  uscaled <- round(scales::rescale(u, to = c(-7500000,7500000)))
 
   w  <-  Wave(uscaled, samp.rate = 1/samprate, bit = 24) #make the wave variable
   x <- stereo(w,w)
-  play(x, player = "/usr/bin/vlc", "--play-and-exit --audio-visual visual")
+  play(x, player = "/usr/bin/vlc", "--play-and-stop --audio-visual visual")
 
   #return(moltendt)
 
