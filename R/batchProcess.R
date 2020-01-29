@@ -24,7 +24,7 @@ batchProcessR <- function(filename) {
   idx_lists <- metalist$idx_lists
 
   availableCores()
-  options(mc.cores = 6)
+  options(mc.cores = availableCores())
   options(future.globals.maxSize = 2097152000)
   plan(multisession)
   data_list <- future_lapply(X = idx_lists,
