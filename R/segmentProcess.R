@@ -14,7 +14,7 @@ segmentProcessR <- function(idx_lists, filename, samprate, chandetails, codedt) 
 
   bpfilt <- butter(n = 4, W = c(600/(50000/2), 1200/(50000/2)), type = "pass", plane = "z")
 
-  message(idx_lists[1])
+  #message(idx_lists[1])
 
   chan01 <- as.vector(h5read(filename,
                              paste0(chandetails[chan == "Ch1", name], "/values/"),
@@ -125,7 +125,7 @@ segmentProcessR <- function(idx_lists, filename, samprate, chandetails, codedt) 
                              code = code),
                          by = c("channel", "group_no" ,"variable")]
     #gc(TRUE)
-    message(paste0("Segment commencing index ", idx_lists[1], " has finished processing"))
+    #message(paste0("Segment commencing index ", idx_lists[1], " has finished processing"))
     return(unique(sum_dt))
 
   } else {
