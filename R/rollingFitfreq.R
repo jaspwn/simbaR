@@ -1,9 +1,9 @@
 #' @export
 
-slidingFit <- function(x, srate) {
+rollingFitfreq <- function(x, srate, stime) {
 
-  raw_ts <- ts(x, start = 0, frequency = 1/srate)
-  t_int <- seq.int(from = 1, to = 1 + length(raw_ts)*srate, length.out = length(raw_ts))
+  raw_ts <- ts(x, start = stime, frequency = 1/srate)
+  t_int <- seq.int(from = stime, to = stime + length(raw_ts)*srate, length.out = length(raw_ts))
 
   ssp <- spectrum(raw_ts, log = "no", plot = FALSE)
   ini_freq <- ssp$freq[ssp$spec==max(ssp$spec)]

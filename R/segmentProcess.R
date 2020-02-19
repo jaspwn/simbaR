@@ -2,7 +2,7 @@
 #' @import data.table
 #' @import signal
 #' @import TTR
-#' @import windowscanr
+#' @import zoo
 #' @export
 
 ## takes a list of lists (idx_lists) containing indexes of segments to analyse in file (filename) exporting in HDF5
@@ -95,23 +95,46 @@ segmentProcessR <- function(idx_lists, filename, samprate, chandetails, codedt) 
 
 
     ## fit data over 10ms sliding window (50% slide)
-    rol_win <- winScan(x = data,
-                       groups = c("channel", "group_no"),
-                       position = NULL,
-                       values = c("bpfiltered"),
-                       win_size = 500,
-                       win_step = 250,
-                       funs = c("slidingFitfreq", "slidingFitR"))
+    # rol_win <- winScan(x = data,
+    #                    groups = c("channel", "group_no"),
+    #                    position = NULL,
+    #                    values = c("bpfiltered"),
+    #                    win_size = 500,
+    #                    win_step = 250,
+    #                    funs = c("slidingFitfreq", "slidingFitR"))
+    #
+    # rol_win <- data.table(rol_win)
 
-    rol_win <- data.table(rol_win)
+    ## use rollapply instead of winScan
+    rol_win <- data[, .(fitfreq = rollapply(data = bpfiltered,
+                                            width = 500, by = 250,
+                                            FUN = rollingFitfreq,
+                                            srate = samprate,
+                                            stime = min(t),
+                                            partial = FALSE,
+                                            align = "left"),
+                        rsqr = rollapply(data = bpfiltered,
+                                         width = 500, by = 250,
+                                         FUN = rollingFitR,
+                                         srate = samprate,
+                                         stime = min(t),
+                                         partial = FALSE,
+                                         align = "left"),
+                        fitime = rollapply(data = t,
+                                           width = 500, by = 250,
+                                           FUN = min,
+                                           partial = FALSE,
+                                           align = "left")),
+                    by = c("channel", "group_no")]
+
     rol_merge <- merge(rol_win, data_sum, by = c("channel", "group_no"))
 
     ## select fits over 0.9
-    rol_sig <- rol_merge[rol_merge[, bpfiltered_slidingFitR > 0.90]]
+    rol_sig <- rol_merge[rol_merge[, rsqr > 0.90]]
 
     rol_molten <- melt(data = rol_sig,
-                       measure.vars = c("bpfiltered_slidingFitfreq",
-                                        "bpfiltered_slidingFitR"))
+                       measure.vars = c("fitfreq",
+                                        "rsqr"))
 
     sum_dt <- rol_molten[, .(mean = mean(value, na.rm = TRUE),
                              median = median(value, na.rm = TRUE),
