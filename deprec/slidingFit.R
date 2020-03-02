@@ -1,5 +1,3 @@
-#' @export
-
 slidingFit <- function(x, srate) {
 
   raw_ts <- ts(x, start = 0, frequency = 1/srate)

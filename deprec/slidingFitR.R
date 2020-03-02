@@ -1,5 +1,3 @@
-#' @export
-
 slidingFitR <- function(x, freq = 50000) {
   #message(ls())
   #x = dt[group_no == 456]$bpfiltered

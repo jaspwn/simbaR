@@ -87,6 +87,10 @@ segmentProcessR <- function(idx_lists, filename, samprate, chandetails, codedt) 
 
     data_sum <- data[, .(mint = min(t),
                          maxt = max(t),
+                         minDC = min(DC),
+                         maxDC = max(DC),
+                         minfilt = min(bpfiltered),
+                         maxfilt = max(bpfiltered),
                          time = time,
                          code = code),
                      by = c("channel", "group_no")]
@@ -144,6 +148,10 @@ segmentProcessR <- function(idx_lists, filename, samprate, chandetails, codedt) 
                              min_t = mint,
                              max_t = maxt,
                              evlength = maxt - mint,
+                             min_DC = minDC,
+                             max_DC = maxDC,
+                             min_filt = minfilt,
+                             max_filt = maxfilt,
                              time = time,
                              code = code),
                          by = c("channel", "group_no" ,"variable")]
