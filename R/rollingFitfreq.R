@@ -17,6 +17,15 @@ rollingFitfreq <- function(x, srate, stime) {
                     upper = ini_freq+100,
                     control = list(fnscale = -1))
 
+  # if(outres$value < 0.90) {
+  #   return()
+  # } else {
+  #
+  #   return(outres$par)
+  #
+  # }
+
+
 
   return(outres$par)
 }

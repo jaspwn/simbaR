@@ -8,11 +8,13 @@
 ## takes a list of lists (idx_lists) containing indexes of segments to analyse in file (filename) exporting in HDF5
 ## (matlab export from spike2)
 
-segmentProcessR <- function(idx_lists, filename, samprate, chandetails, codedt) {
+segmentProcessR <- function(idx_lists, filename, samprate, chandetails, codedt, cfreqs = c(600, 1200)) {
 
   #message(ls())
 
-  bpfilt <- butter(n = 4, W = c(600/(50000/2), 1200/(50000/2)), type = "pass", plane = "z")
+  #bpfilt <- butter(n = 4, W = c(600/(50000/2), 1200/(50000/2)), type = "pass", plane = "z")
+
+  bpfilt <- butter(n = 4, W = c(cfreqs[1]*samprate*2, cfreqs[2]*samprate*2), type = "pass", plane = "z")
 
   #message(idx_lists[1])
 
@@ -55,8 +57,7 @@ segmentProcessR <- function(idx_lists, filename, samprate, chandetails, codedt) 
   ## rescale each channel
   moltendt[, code := codedt[t_idx == idx_lists[1], lettercode]]
   moltendt[, time := codedt[t_idx == idx_lists[1], time]]
-  # moltendt[, scaled := scales::rescale(value, to = c(-1,1)),
-  #          by = "channel"]
+
   ## perform DC remove of each channel
   moltendt[, DC := removeDC(value, 50),
            by = "channel"]
@@ -83,6 +84,13 @@ segmentProcessR <- function(idx_lists, filename, samprate, chandetails, codedt) 
   ## select events longer than 10ms (0.01s) 0.01*50000 sample rate
   data <- data[data[,n_dp > 500]]
 
+  ## save output of fly-by events that pass threshold
+  if (!dir.exists(paste0(dirname(filename), "/raw_events/"))) {
+    dir.create(paste0(dirname(filename), "/raw_events/"), recursive = TRUE)
+  }
+
+  fwrite(data, file = paste0(paste0(dirname(filename), "/raw_events/", gsub(".mat", paste0("_", idx_lists[1], ".txt"), basename(filename)))))
+
   if (dim(data)[1] > 0) {
 
     data_sum <- data[, .(mint = min(t),
@@ -97,17 +105,6 @@ segmentProcessR <- function(idx_lists, filename, samprate, chandetails, codedt) 
 
     data_sum <- unique(data_sum)
 
-
-    ## fit data over 10ms sliding window (50% slide)
-    # rol_win <- winScan(x = data,
-    #                    groups = c("channel", "group_no"),
-    #                    position = NULL,
-    #                    values = c("bpfiltered"),
-    #                    win_size = 500,
-    #                    win_step = 250,
-    #                    funs = c("slidingFitfreq", "slidingFitR"))
-    #
-    # rol_win <- data.table(rol_win)
 
     ## use rollapply instead of winScan
     rol_win <- data[, .(fitfreq = rollapply(data = bpfiltered,
@@ -136,9 +133,19 @@ segmentProcessR <- function(idx_lists, filename, samprate, chandetails, codedt) 
     ## select fits over 0.9
     rol_sig <- rol_merge[rol_merge[, rsqr > 0.90]]
 
+    ## save output of fit events
+
+    if (!dir.exists(paste0(dirname(filename), "/fit_events/"))) {
+      dir.create(paste0(dirname(filename), "/fit_events/"), recursive = TRUE)
+    }
+
+    fwrite(rol_sig, file = paste0(paste0(dirname(filename), "/fit_events/", gsub(".mat", paste0("_fit_", idx_lists[1], ".txt"), basename(filename)))))
+
+
     rol_molten <- melt(data = rol_sig,
                        measure.vars = c("fitfreq",
                                         "rsqr"))
+
 
     sum_dt <- rol_molten[, .(mean = mean(value, na.rm = TRUE),
                              median = median(value, na.rm = TRUE),

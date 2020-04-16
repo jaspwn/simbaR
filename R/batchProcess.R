@@ -3,7 +3,7 @@
 #' @import rhdf5
 #' @import data.table
 
-batchProcessR <- function(filename) {
+batchProcessR <- function(filename, cfreqs = c(600, 1200), cores = availableCores()) {
 
   print(Sys.time())
   print(basename(filename))
@@ -16,19 +16,21 @@ batchProcessR <- function(filename) {
 
 
 
-  metalist <- hdf5metaReadR(filename)
+  #metalist <- hdf5metaReadR(filename)
+  metalist <- hdf5metaLoadR(filename)
   filename <- filename
   assign("samprate", metalist$samprate, envir = .GlobalEnv)
   chandetails <- metalist$chandetails
   codedt <- metalist$codedt
   idx_lists <- metalist$idx_lists
 
-  availableCores()
-  options(mc.cores = availableCores())
+
+  options(mc.cores = cores)
   options(future.globals.maxSize = 2097152000)
   plan(multisession)
   data_list <- future_lapply(X = idx_lists,
                              FUN = segmentProcessR,
+                             cfreqs = cfreqs,
                              filename = filename,
                              samprate = samprate,
                              chandetails = chandetails,

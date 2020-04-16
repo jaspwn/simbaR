@@ -6,6 +6,7 @@ library(windowscanr)
 library(ggplot2)
 library(biosignalEMG)
 library(cowplot)
+library(zoo)
 
 #bandpass filter design
 bpfilt <- butter(n = 4, W = c(600/(50000/2), 1200/(50000/2)), type = "pass", plane = "z")
@@ -24,15 +25,13 @@ idx_lists <- meta$idx_lists
 
 ## segment to analyse
 
-idx <- idx_lists[[38]]
+idx <- idx_lists[[37]]
 
 out_dt <- segmentProcessR(idx_lists = idx,
                           filename = filename,
                           samprate = samprate,
                           chandetails = chandetails,
                           codedt = codedt)
-
-
 
 
 # create data.table out of data channels
@@ -73,23 +72,12 @@ moltendt <- melt(dt,
 moltendt[, code := codedt[t_idx == idx[1], lettercode]]
 moltendt[, time := codedt[t_idx == idx[1], time]]
 
-# moltendt[, scaled := scales::rescale(value, to = c(-1,1)),
-#          by = "channel"]
 ## perform DC remove of each channel
 moltendt[, DC := removeDC(value, 50),
          by = "channel"]
 ## run band pass filter on DC remove signal
 moltendt[, bpfiltered := as.vector(filtfilt(bpfilt, x = DC)),
          by = "channel"]
-
-## group using emg package
-# moltendt[, emged := emgGroupR(bpfiltered, samprate = samprate),
-#          by = "channel"]
-# moltendt[, emgsd := sd(emged, na.rm = TRUE),
-#          by = c("channel")]
-# moltendt[, emg_group := eventGroupR(emged, 2*emgsd),
-#          by = "channel"]
-
 ## group using custom envelope function
 moltendt[, enved := envelopeR(bpfiltered, samprate = samprate),
          by = "channel"]
@@ -98,23 +86,36 @@ moltendt[, envsd := mean(abs(bpfiltered), na.rm = TRUE),
 moltendt[, group_no := eventGroupR(enved, 2*envsd),
          by = "channel"]
 
+noise01 <- moltendt[t %between% c(2, 3), c("t", "channel", "value", "bpfiltered")]
+
+save(noise01, file = "./data/noise01.rda", compress = TRUE)
+
+uscaled <- round(scales::rescale(u, to = c(-7500000,7500000)))
+
+
+flyby <- moltendt[channel == "chan01"][group_no == 44, value]
+white_n <- noise(kind = "white", duration = 1, samp.rate = 50000, stereo = FALSE, xunit = "time")@left
+pink_n <- noise(kind = "pink", duration = 1, samp.rate = 50000, stereo = FALSE, xunit = "time")@left
+red_n <- noise(kind = "red", duration = 1, samp.rate = 50000, stereo = FALSE, xunit = "time")@left
+chan01_n <- noise01[channel == "chan01", value]
+chan02_n <- noise01[channel == "chan02", value]
+chan03_n <- noise01[channel == "chan03", value]
+chan04_n <- noise01[channel == "chan04", value]
 
 
 
-# ## perform DC remove of each channel
-# moltendt[, DC := removeDC(value, 50),
-#          by = "channel"]
-# ## run band pass filter on DC remove signal
-# moltendt[, bpfiltered := as.vector(filtfilt(bpfilt, x = DC)),
-#          by = "channel"]
-# moltendt[, envma := emgGroupR(bpfiltered),
-#          by = "channel"]
-# moltendt[, envscaled := scales::rescale(envma, to = c(0,1)),
-#          by = "channel"]
-# moltendt[, group_no := eventGroupR(envscaled, 0.1),
-#          by = "channel"]
+uscaled <- c(round(scales::rescale(chan01_n, to = c(-7500000,7500000))),
+             round(scales::rescale(flyby, to = c(-7500000,7500000))),
+             round(scales::rescale(chan01_n, to = c(-7500000,7500000))))
 
-## select events that meet smooth threshold
+uscaled <- round(scales::rescale(c(chan01_n, flyby, chan01_n), to = c(-7500000,7500000)))
+
+w  <-  Wave(uscaled, samp.rate = 50000, bit = 24) #make the wave variable
+x <- stereo(w,w)
+play(x, player = "/usr/bin/vlc", "--play-and-stop --audio-visual visual")
+
+
+
 dt_thresh <- moltendt[enved > 2*envsd]
 
 ## calculate length of each event but taking the length of time above threshold
@@ -127,34 +128,60 @@ data <- merge(dt_thresh, event_length, by = c("channel", "group_no"))
 ## select events longer than 10ms (0.01s) 0.01*50000 sample rate
 data <- data[data[,n_dp > 500]]
 
-## summarise data
-data_sum <- data[, .(mint = min(t),
-                     maxt = max(t),
-                     time = time,
-                     code = code),
-                 by = c("channel", "group_no")]
+if (!dir.exists(paste0(dirname(filename), "/raw_events/"))) {
+  dir.create(paste0(dirname(filename), "/raw_events/"), recursive = TRUE)
+}
 
-data_sum <- unique(data_sum)
+fwrite(data, file = paste0(paste0(dirname(filename), "/raw_events/", gsub(".mat", paste0("_", idx[1], ".txt"), basename(filename)))))
+
+  data_sum <- data[, .(mint = min(t),
+                       maxt = max(t),
+                       minDC = min(DC),
+                       maxDC = max(DC),
+                       minfilt = min(bpfiltered),
+                       maxfilt = max(bpfiltered),
+                       time = time,
+                       code = code),
+                   by = c("channel", "group_no")]
+
+  data_sum <- unique(data_sum)
 
 
-## fit data over 10ms sliding window (50% slide)
-rol_win <- winScan(x = data,
-                   groups = c("channel", "group_no"),
-                   position = NULL,
-                   values = c("bpfiltered"),
-                   win_size = 500,
-                   win_step = 250,
-                   funs = c("slidingFitfreq", "slidingFitR"))
+  rol_win <- data[, .(fitfreq = rollapply(data = bpfiltered,
+                                          width = 500, by = 250,
+                                          FUN = rollingFitfreq,
+                                          srate = samprate,
+                                          stime = min(t),
+                                          partial = FALSE,
+                                          align = "left"),
+                      rsqr = rollapply(data = bpfiltered,
+                                       width = 500, by = 250,
+                                       FUN = rollingFitR,
+                                       srate = samprate,
+                                       stime = min(t),
+                                       partial = FALSE,
+                                       align = "left"),
+                      fitime = rollapply(data = t,
+                                         width = 500, by = 250,
+                                         FUN = min,
+                                         partial = FALSE,
+                                         align = "left")),
+                  by = c("channel", "group_no")]
 
-rol_win <- data.table(rol_win)
-rol_merge <- merge(rol_win, data_sum, by = c("channel", "group_no"))
+  rol_merge <- merge(rol_win, data_sum, by = c("channel", "group_no"))
 
-## select fits over 0.9
-rol_sig <- rol_merge[rol_merge[, bpfiltered_slidingFitR > 0.90]]
+  ## select fits over 0.9
+  rol_sig <- rol_merge[rol_merge[, rsqr > 0.90]]
 
-rol_molten <- melt(data = rol_sig,
-                   measure.vars = c("bpfiltered_slidingFitfreq",
-                                    "bpfiltered_slidingFitR"))
+  if (!dir.exists(paste0(dirname(filename), "/fit_events/"))) {
+    dir.create(paste0(dirname(filename), "/fit_events/"), recursive = TRUE)
+  }
+
+  fwrite(rol_sig, file = paste0(paste0(dirname(filename), "/fit_events/", gsub(".mat", paste0("_fit_", idx[1], ".txt"), basename(filename)))))
+
+  rol_molten <- melt(data = rol_sig,
+                     measure.vars = c("fitfreq",
+                                      "rsqr"))
 
 sum_dt <- rol_molten[, .(mean = mean(value, na.rm = TRUE),
                          median = median(value, na.rm = TRUE),
@@ -169,6 +196,7 @@ sum_dt <- rol_molten[, .(mean = mean(value, na.rm = TRUE),
                      by = c("channel", "group_no" ,"variable")]
 
 sum_dt <- unique(sum_dt)
+
 
 
   orig_rec <- moltendt
