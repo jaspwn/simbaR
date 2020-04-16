@@ -12,7 +12,7 @@ hdf5metaLoadR <- function(filename) {
 
   } else {
 
-    hdf5metaSaveR(filename)
+    metalist <- hdf5metaSaveR(filename)
 
     return(metalist)
 
