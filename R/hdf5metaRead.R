@@ -11,19 +11,19 @@ hdf5metaReadR <- function(filename) {
 
   ## read in file channel information
   channames <- data.table(name = names[group == "/", name])
-  samprate <<- h5read(filename, paste0(channames$name[1], "/interval/"))[1,]
-  stime <- h5read(filename, paste0(channames$name[1], "/start/"))[,1]
-  len <- h5read(filename, paste0(channames$name[1], "/length/"))[,1]
+  samprate <<- h5read(filename, paste0(channames[1, name], "/interval/"))[1,]
+  stime <- h5read(filename, paste0(channames[1, name], "/start/"))[,1]
+  len <- h5read(filename, paste0(channames[1, name], "/length/"))[,1]
   channames[, c("date", "sTod", "eTod", "tod", "treatment", "chan") := channameSplitR(name)]
   chandetails <- channames[complete.cases(channames)]
 
   ## create data.table of marker channel
-  marktimes <- h5read(filename, paste0(chandetails[chan == "Ch32"]$name, "/times/"))
-  markcodes <- h5read(filename, paste0(chandetails[chan == "Ch32"]$name, "/codes/"))
+  marktimes <- h5read(filename, paste0(chandetails[chan == "Ch32", name], "/times/"))
+  markcodes <- h5read(filename, paste0(chandetails[chan == "Ch32", name], "/codes/"))
 
   codedt <- data.table(time = marktimes[,1], ASCIIcode = markcodes[,1])
   rm(marktimes, markcodes)
-  codedt[, lettercode := intToUtf8(as.vector(ASCIIcode)), by = "ASCIIcode"]
+  codedt[, lettercode := intToUtf8(ASCIIcode), by = time]
 
   ## create time data.table of file
 
@@ -36,14 +36,15 @@ hdf5metaReadR <- function(filename) {
   codedt[, t_idx := dt_time[.(time), roll = "nearest", which = TRUE]]
 
   ## get time index of final data point
-  end_idx <- dt_time[.(codedt$time[length(codedt$time)]+60), roll = "nearest", which = TRUE]
 
-  idx_pairs <- embed(codedt$t_idx, 2)[, 2:1]
+  end_idx <- dt_time[.(tail(codedt[, time], 1)+mean(diff(codedt[, time]))), roll = "nearest", which = TRUE]
+
+  idx_pairs <- embed(codedt[, t_idx], 2)[, 2:1]
   idx_lists <- split(idx_pairs,
                      rep(1:nrow(idx_pairs), times = ncol(idx_pairs)))
 
   ## append final pair manually
-  idx_lists <- append(idx_lists, list(c(codedt$t_idx[length(codedt$t_idx)],
+  idx_lists <- append(idx_lists, list(c(tail(codedt[, t_idx], 1),
                                         end_idx)))
 
   ## analyse two minute segments
