@@ -18,7 +18,7 @@ sineOptR <- function(x, t, samprate = dataSamprate, optMeth = "BFGS") {
 
   outres <-optim(par=c(A, f, p, o),
                  fn=sineFitR,
-                 fitdat = y,
+                 fitdat = x,
                  t = t,
                  method = optMeth,
                  control = list(fnscale = -1))
