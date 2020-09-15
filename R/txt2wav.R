@@ -24,8 +24,3 @@ txt2wavR <- function(samprate, volfac) {
   message(paste0("wav ouput to ", tools::file_path_sans_ext(filename), ".wav"))
 
 }
-
-
-
-
-

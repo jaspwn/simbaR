@@ -2,11 +2,11 @@
 
 sineFitR <- function(par, fitdat, t) {
 
-  A = rep(par[1], length(t)) #amplitude
+  A = par[1] #amplitude
   f = par[2] #frequency in Hz
   p = par[3] #phase in rads
-  o = rep(par[4], length(t)) #offset
+  o = par[4] #offset
 
-  reslm <- lm(fitdat ~ A*sin(2*pi*f*t + p) + o)
+    reslm <- lm(fitdat ~ I(A*sin(2*pi*f*t + p) + o))
   summary(reslm)$adj.r.squared
 }
