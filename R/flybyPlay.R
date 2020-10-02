@@ -17,8 +17,8 @@ flybyPlayR <- function(resdt, row, filtered = FALSE, printPlot = TRUE, filext = 
 
   ## read in file channel information
 
-  meta <- hdf5metaReadR(filename)
-  h5closeAll()
+  meta <- hdf5metaLoadR(filename)
+  #h5closeAll()
 
   samprate <- meta$samprate
   chandetails <- meta$chandetails
