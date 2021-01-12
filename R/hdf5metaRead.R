@@ -10,12 +10,30 @@ hdf5metaReadR <- function(filename) {
   names <- data.table(h5ls(filename))
 
   ## read in file channel information
+
+  # channames <- data.table(name = names[group == "/", name])
+  # samprate <<- h5read(filename, paste0(channames[1, name], "/interval/"))[1,]
+  # stime <- h5read(filename, paste0(channames[1, name], "/start/"))[,1]
+  # len <- h5read(filename, paste0(channames[1, name], "/length/"))[,1]
+  # channames[, c("date", "sTod", "eTod", "tod", "treatment", "chan") := channameSplitR(name)]
+  # chandetails <- channames[complete.cases(channames)]
+
   channames <- data.table(name = names[group == "/", name])
   samprate <<- h5read(filename, paste0(channames[1, name], "/interval/"))[1,]
   stime <- h5read(filename, paste0(channames[1, name], "/start/"))[,1]
   len <- h5read(filename, paste0(channames[1, name], "/length/"))[,1]
-  channames[, c("date", "sTod", "eTod", "tod", "treatment", "chan") := channameSplitR(name)]
-  chandetails <- channames[complete.cases(channames)]
+  channames[, chan := tail(tstrsplit(name, "_"), 1)]
+  channames <- channames[name != "file"]
+
+  ## find data channels
+  chan_list <- lapply(X = channames[, name],
+                      FUN = chanTypeR,
+                      filename = filename)
+
+  chan_list <- rbindlist(chan_list)
+  chandetails <- merge(channames, chan_list, by = "name")
+  chandetails[, chantype := ifelse(chantitle %in% c("DigMark", "Keyboard"), "marker", "data")]
+
 
   ## create data.table of marker channel
   marktimes <- h5read(filename, paste0(chandetails[chan == "Ch32", name], "/times/"))

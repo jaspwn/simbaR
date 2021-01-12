@@ -11,6 +11,12 @@ channameSplitR <- function(x) {
 
   }
 
+  if (length(nameparts) > 6) {
+
+    nameparts <- nameparts[-6]
+
+  }
+
   return(nameparts)
 
 }

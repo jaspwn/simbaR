@@ -17,6 +17,7 @@ resfile <- file.choose()
 ## read in file channel information
 
 meta <- hdf5metaReadR(filename)
+names <- data.table(h5ls(filename))
 
 samprate <- meta$samprate
 chandetails <- meta$chandetails
@@ -25,7 +26,7 @@ idx_lists <- meta$idx_lists
 
 ## segment to analyse
 
-idx <- idx_lists[[37]]
+idx <- idx_lists[[61]]
 
 out_dt <- segmentProcessR(idx_lists = idx,
                           filename = filename,

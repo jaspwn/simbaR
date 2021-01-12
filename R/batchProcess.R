@@ -28,7 +28,7 @@ batchProcessR <- function(filename, cfreqs = c(600, 1200), cores = availableCore
   options(mc.cores = cores)
   options(future.globals.maxSize = 2097152000)
   plan(multisession)
-  data_list <- future_lapply(X = idx_lists,
+  data_list <- future_lapply(X = idx_lists[1:60],
                              FUN = segmentProcessR,
                              cfreqs = cfreqs,
                              filename = filename,

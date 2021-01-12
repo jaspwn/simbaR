@@ -18,45 +18,67 @@ segmentProcessR <- function(idx_lists, filename, samprate, chandetails, codedt, 
 
   #message(idx_lists[1])
 
-  chan01 <- as.vector(h5read(filename,
-                             paste0(chandetails[chan == "Ch1", name], "/values/"),
-                             index = list(idx_lists[1]:idx_lists[2],1)))
-  h5closeAll()
-  chan02 <- as.vector(h5read(filename,
-                             paste0(chandetails[chan == "Ch2", name], "/values/"),
-                             index = list(idx_lists[1]:idx_lists[2],1)))
-  h5closeAll()
-  chan03 <- as.vector(h5read(filename,
-                             paste0(chandetails[chan == "Ch3", name], "/values/"),
-                             index = list(idx_lists[1]:idx_lists[2],1)))
-  h5closeAll()
-  chan04 <- as.vector(h5read(filename,
-                             paste0(chandetails[chan == "Ch4", name], "/values/"),
-                             index = list(idx_lists[1]:idx_lists[2],1)))
-  h5closeAll()
+  # chan01 <- as.vector(h5read(filename,
+  #                            paste0(chandetails[chan == "Ch1", name], "/values/"),
+  #                            index = list(idx_lists[1]:idx_lists[2],1)))
+  # h5closeAll()
+  # chan02 <- as.vector(h5read(filename,
+  #                            paste0(chandetails[chan == "Ch2", name], "/values/"),
+  #                            index = list(idx_lists[1]:idx_lists[2],1)))
+  # h5closeAll()
+  # chan03 <- as.vector(h5read(filename,
+  #                            paste0(chandetails[chan == "Ch3", name], "/values/"),
+  #                            index = list(idx_lists[1]:idx_lists[2],1)))
+  # h5closeAll()
+  # chan04 <- as.vector(h5read(filename,
+  #                            paste0(chandetails[chan == "Ch4", name], "/values/"),
+  #                            index = list(idx_lists[1]:idx_lists[2],1)))
+  # h5closeAll()
+  # chan05 <- as.vector(h5read(filename,
+  #                            paste0(chandetails[chan == "Ch5", name], "/values/"),
+  #                            index = list(idx_lists[1]:idx_lists[2],1)))
+  # h5closeAll()
+  # chan06 <- as.vector(h5read(filename,
+  #                            paste0(chandetails[chan == "Ch6", name], "/values/"),
+  #                            index = list(idx_lists[1]:idx_lists[2],1)))
+  # h5closeAll()
+  #
+  # t_seg <- seq.int(from = codedt[t_idx == idx_lists[1], time],
+  #                  to = codedt[t_idx == idx_lists[1], time] + length(chan01)*samprate,
+  #                  length.out = length(chan01))
+  #
+  # dt <- data.table(t = t_seg,
+  #                  chan01 = chan01,
+  #                  chan02 = chan02,
+  #                  chan03 = chan03,
+  #                  chan04 = chan04,
+  #                  chan05 = chan05,
+  #                  chan06 = chan06)
+  # rm(t_seg, chan01, chan02, chan03, chan04, chan05, chan06)
+  #
+  # moltendt <- melt(dt,
+  #
+  #                  measure.vars = c("chan01",
+  #                                   "chan02",
+  #                                   "chan03",
+  #                                   "chan04",
+  #                                   "chan05",
+  #                                   "chan06"),
+  #                  variable.name = "channel")
+  #
+  # ## rescale each channel
+  # moltendt[, code := codedt[t_idx == idx_lists[1], lettercode]]
+  # moltendt[, time := codedt[t_idx == idx_lists[1], time]]
 
-  t_seg <- seq.int(from = codedt[t_idx == idx_lists[1], time],
-                   to = codedt[t_idx == idx_lists[1], time] + length(chan01)*samprate,
-                   length.out = length(chan01))
+  dtlist <- lapply(X = chandetails[chantype == "data", chan],
+                   FUN = chanReadeR,
+                   chandetails = chandetails,
+                   idx_lists = idx_lists,
+                   filename = filename,
+                   codedt = codedt,
+                   samprate = samprate)
 
-  dt <- data.table(t = t_seg,
-                   chan01 = chan01,
-                   chan02 = chan02,
-                   chan03 = chan03,
-                   chan04 = chan04)
-  rm(t_seg, chan01, chan02, chan03, chan04)
-
-  moltendt <- melt(dt,
-
-                   measure.vars = c("chan01",
-                                    "chan02",
-                                    "chan03",
-                                    "chan04"),
-                   variable.name = "channel")
-
-  ## rescale each channel
-  moltendt[, code := codedt[t_idx == idx_lists[1], lettercode]]
-  moltendt[, time := codedt[t_idx == idx_lists[1], time]]
+  moltendt <- rbindlist(dtlist)
 
   ## perform DC remove of each channel
   moltendt[, DC := removeDC(value, 50),
