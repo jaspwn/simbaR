@@ -3,23 +3,43 @@
 #' @export
 
 ## Creates swarm window by setting dayPhase to peaktime +/- sWidth for each expDay (experimental day)
+## x is time of event, y is the experimentdal day, and z (if provided) is the individual channel.
 
-dayPhaseR <- function(x, y, z = c("Ch1", "Ch2", "Ch3", "Ch4", "Ch5", "Ch6"), sWidth = 30) {
+dayPhaseR <- function(x, y, z, sWidth = 30, channelWise = FALSE) {
 
-  if(x %between% c(peak_dt[expDay == y & channel %in% z, peaktime] - behavr::mins(sWidth),
-                   peak_dt[expDay == y & channel %in% z, peaktime] + behavr::mins(sWidth))) {
+  if(channelWise == FALSE) {
 
-    res <- paste0(y, " swarm")
+    if(x %between% c(peak_dt[expDay == y, peaktime] - behavr::mins(sWidth),
+                     peak_dt[expDay == y, peaktime] + behavr::mins(sWidth))) {
 
-    return(res)
+      res <- paste0(y, " swarm")
 
+      return(res)
+
+    } else {
+
+      res <- paste0(y, " other")
+
+      return(res)
+
+    }
   } else {
 
-    res <- paste0(y, " other")
+    if(x %between% c(peak_dt[expDay == y & channel == z, peaktime] - behavr::mins(sWidth),
+                     peak_dt[expDay == y & channel == z, peaktime] + behavr::mins(sWidth))) {
 
-    return(res)
+      res <- paste0(y, " swarm")
+
+      return(res)
+
+    } else {
+
+      res <- paste0(y, " other")
+
+      return(res)
+
+    }
 
   }
-
 
 }
